@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Payment Service Platform
 
 Comprehensive documentation for the `payment-service` codebase — a microservices-based payment orchestration platform.
@@ -674,3 +675,6 @@ Each service contains a `Dockerfile` for multi-stage or direct JAR builds.
 ---
 
 *Document generated from codebase analysis. Last updated: 2026-06-23.*
+=======
+# payments-flow
+>>>>>>> 16d5b032cfeb56b2c6b11e7ab2b4281bc6518358
