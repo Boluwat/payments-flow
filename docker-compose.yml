@@ -1,0 +1,168 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: payment-postgres
+    environment:
+      POSTGRES_DB: PaymentService
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Bolu@123wat$ife
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - payment-network
+
+  # --- Core Services ---
+  ledger-service:
+    build:
+      context: .
+      dockerfile: ledger-service/Dockerfile
+    container_name: ledger-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/PaymentService?sslmode=disable&preferQueryMode=simple
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: Bolu@123wat$ife
+      SERVER_PORT: 8081
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  settlement-service:
+    build:
+      context: .
+      dockerfile: settlement-service/Dockerfile
+    container_name: settlement-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/PaymentService?sslmode=disable&preferQueryMode=simple
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: Bolu@123wat$ife
+      SERVER_PORT: 8082
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: payment-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/PaymentService?sslmode=disable&preferQueryMode=simple
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: Bolu@123wat$ife
+      SERVER_PORT: 8080
+      LEDGER-SERVICE_URL: http://ledger-service:8081
+      SETTLEMENT-SERVICE_URL: http://settlement-service:8082
+    ports:
+      - "8080:8080"
+    depends_on:
+      ledger-service:
+        condition: service_healthy
+      settlement-service:
+        condition: service_healthy
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- Gateway ---
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: gateway-service
+    environment:
+      SERVER_PORT: 8090
+      SPRING_CLOUD_GATEWAY_ROUTES[0]_URI: http://payment-service:8080
+      SPRING_CLOUD_GATEWAY_ROUTES[1]_URI: http://ledger-service:8081
+      SPRING_CLOUD_GATEWAY_ROUTES[2]_URI: http://settlement-service:8082
+    ports:
+      - "8090:8090"
+    depends_on:
+      payment-service:
+        condition: service_healthy
+      ledger-service:
+        condition: service_healthy
+      settlement-service:
+        condition: service_healthy
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # --- Observability ---
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - payment-network
+    depends_on:
+      - gateway-service
+      - payment-service
+      - ledger-service
+      - settlement-service
+
+  grafana:
+    image: grafana/grafana:10.4.1
+    container_name: grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - payment-network
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_data:
+  grafana_data:
+
+networks:
+  payment-network:
+    driver: bridge
