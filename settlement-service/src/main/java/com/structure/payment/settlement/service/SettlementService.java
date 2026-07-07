@@ -17,6 +17,8 @@ import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -131,6 +133,14 @@ public class SettlementService {
                 .providerRef(record.getProvider_ref())
                 .paymentId(record.getPaymentId())
                 .build();
+    }
+
+    public Page<SettlementResultDto> findAllSettlements(SettlementStatus status,
+                                                        Instant from,
+                                                        Instant to,
+                                                        Pageable pageable) {
+        return settlementRepo.findAllWithFilters(status, from, to, pageable)
+                .map(this::mapToDto);
     }
 
     private SettlementResultDto mapToDto(SettlementRecord record) {

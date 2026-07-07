@@ -2,6 +2,8 @@ package com.structure.payment.settlement.repository;
 
 import com.structure.payment.settlement.model.SettlementRecord;
 import com.structure.payment.settlement.model.SettlementStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,4 +35,18 @@ public interface SettlementRecordRepository extends JpaRepository<SettlementReco
         """)
     List<SettlementRecord> findSettledBetween(@Param("from") Instant from,
                                               @Param("to")   Instant to);
+
+    /**
+     * Paginated, optionally filtered settlement list.
+     */
+    @Query("""
+        SELECT s FROM SettlementRecord s
+        WHERE (:status IS NULL OR s.status = :status)
+          AND (:from IS NULL OR s.settledAt >= :from)
+          AND (:to   IS NULL OR s.settledAt <= :to)
+        """)
+    Page<SettlementRecord> findAllWithFilters(@Param("status") SettlementStatus status,
+                                              @Param("from")   Instant from,
+                                              @Param("to")     Instant to,
+                                              Pageable pageable);
 }

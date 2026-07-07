@@ -8,10 +8,14 @@ import com.structure.payment.settlement.config.Nibss.DTOs.NibssTransferRequest;
 import com.structure.payment.settlement.config.Nibss.DTOs.NibssTransferResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 
 @Component
@@ -23,12 +27,20 @@ public class MockNibssClient implements NibssClient{
     @Value("${nibss.mock.latency-ms:150}")
     private long latencyMs;
 
+    // Cache to store deterministic failure decisions per session
+    // This ensures that if a request fails, all retries will also fail
+    private final Map<String, Boolean> failureDecisions = new ConcurrentHashMap<>();
+
     @Override
     public NibssTransferResponse transfer(NibssTransferRequest request) {
         simulateLatency();
 
-        if (Math.random() < failRate) {
-            log.warn("Simulated NIBSS failure for sessionId={}", request.getSessionId());
+        // Deterministic failure: once decided, always fail/succeed for this session
+        boolean shouldFail = failureDecisions.computeIfAbsent(request.getSessionId(), 
+            sessionId -> Math.abs(sessionId.hashCode()) % 100 < (failRate * 100));
+
+        if (shouldFail) {
+            log.warn("Simulated NIBSS failure for sessionId={} (deterministic)", request.getSessionId());
             throw new SettlementException("SETTLEMENT_FAILED: settlement unavailable");
         }
 
@@ -66,5 +78,16 @@ public class MockNibssClient implements NibssClient{
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+    }
+
+    /**
+     * Clear failure decisions cache periodically to prevent memory leaks.
+     * Runs every 6 hours.
+     */
+    @Scheduled(fixedDelay = 6, timeUnit = TimeUnit.HOURS)
+    public void clearFailureCache() {
+        int size = failureDecisions.size();
+        failureDecisions.clear();
+        log.info("Cleared failure decisions cache, removed {} entries", size);
     }
 }
