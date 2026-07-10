@@ -86,13 +86,41 @@ All pods should reach `Running` and `1/1` within 2–3 minutes.
 | `http://localhost:30030` | Grafana (`admin` / `admin`) |
 | `http://localhost:30090` | Prometheus UI |
 
-### Test End-to-End Payment
+---
+
+## Access via Port-Forward (Alternative)
+
+If you prefer to reach every service directly on localhost — including the internal databases — use the helper scripts in `scripts/`.
+
+### Start all port-forwards
+
+From the repo root:
 
 ```powershell
-curl -X POST http://localhost:8080/api/v1/payments `
-  -H "Idempotency-Key: demo-001" `
-  -H "Content-Type: application/json" `
-  -d '{"accountId":"ACC001","amount":100.00,"description":"Demo","beneficiaryAccount":"ACC002"}'
+.\scripts\start-port-forward.ps1
+```
+
+This starts background `kubectl port-forward` jobs for every service.  
+If the `payment` kind cluster was lost after a restart, the script prints the exact commands needed to recreate it.
+
+### Ports exposed
+
+| Service | Local URL |
+|---------|-----------|
+| Gateway API | `http://localhost:8090` |
+| Payment service (direct) | `http://localhost:8080` |
+| Ledger service (direct) | `http://localhost:8081` |
+| Settlement service (direct) | `http://localhost:8082` |
+| Postgres — Payment | `localhost:5432` |
+| Postgres — Ledger | `localhost:5433` |
+| Postgres — Settlement | `localhost:5434` |
+| Prometheus | `http://localhost:9090` |
+| Grafana | `http://localhost:3000` |
+
+### Stop all port-forwards
+
+```powershell
+.\scripts\stop-port-forward.ps1
 ```
 
 ---

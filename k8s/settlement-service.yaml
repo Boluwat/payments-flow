@@ -28,8 +28,8 @@ spec:
     spec:
       containers:
         - name: settlement-service
-          image: payment-settlement-service:latest
-          imagePullPolicy: Never
+          image: localhost:5000/payment-settlement-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8082
           env:

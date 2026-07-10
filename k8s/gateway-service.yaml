@@ -28,8 +28,8 @@ spec:
     spec:
       containers:
         - name: gateway-service
-          image: payment-gateway-service:latest
-          imagePullPolicy: Never
+          image: localhost:5000/payment-gateway-service:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8090
           env:

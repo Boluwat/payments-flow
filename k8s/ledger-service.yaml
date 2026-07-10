@@ -28,8 +28,8 @@ spec:
     spec:
       containers:
         - name: ledger-service
-          image: payment-ledger-service:latest
-          imagePullPolicy: Never
+          image: localhost:5000/payment-ledger-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8081
           env:

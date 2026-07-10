@@ -67,6 +67,7 @@ services:
     build:
       context: .
       dockerfile: ledger-service/Dockerfile
+    image: payment-ledger-service:latest
     container_name: ledger-service
     entrypoint: ["/bin/sh", "-c"]
     command: ["apk add --no-cache wget && exec java -jar app.jar"]
@@ -93,6 +94,7 @@ services:
     build:
       context: .
       dockerfile: settlement-service/Dockerfile
+    image: payment-settlement-service:latest
     container_name: settlement-service
     entrypoint: ["/bin/sh", "-c"]
     command: ["apk add --no-cache wget && exec java -jar app.jar"]
@@ -119,6 +121,7 @@ services:
     build:
       context: .
       dockerfile: payment-service/Dockerfile
+    image: payment-payment-service:latest
     container_name: payment-service
     entrypoint: ["/bin/sh", "-c"]
     command: ["apk add --no-cache wget && exec java -jar app.jar"]
@@ -152,6 +155,7 @@ services:
     build:
       context: .
       dockerfile: gateway-service/Dockerfile
+    image: payment-gateway-service:latest
     container_name: gateway-service
     entrypoint: ["/bin/sh", "-c"]
     command: ["apk add --no-cache wget && exec java -jar app.jar"]
